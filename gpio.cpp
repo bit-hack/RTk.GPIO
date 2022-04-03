@@ -244,7 +244,7 @@ bool gpio_read(int pin) {
   return (data[1] == '1') ? true : false;
 }
 
-uint8_t spi_send(int clk, int mosi, int miso, uint8_t data, int cs) {
+uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs) {
 
   // pull CS low
   if (cs >= 0) gpio_write(cs, 0);
@@ -252,14 +252,14 @@ uint8_t spi_send(int clk, int mosi, int miso, uint8_t data, int cs) {
   uint8_t recv = 0;
   for (int i = 0; i < 8; ++i) {
     // clock goes low
-    gpio_write(clk, 0);
+    gpio_write(sck, 0);
     // shift data out
-    gpio_write(mosi, (data & 1) ? 1 : 0);
-    data = (data >> 1);
+    gpio_write(mosi, (data & 0x80) ? 1 : 0);
+    data = (data << 1);
     // clock goes high
-    gpio_write(clk, 1);
+    gpio_write(sck, 1);
     // shift new data in
-    recv = (recv >> 1) | (gpio_read(miso) ? 0x80 : 0);
+    recv = (recv << 1) | (gpio_read(miso) ? 1 : 0);
   }
 
   // pull CS high

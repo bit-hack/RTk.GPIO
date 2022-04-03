@@ -69,14 +69,14 @@ bool gpio_read(int pin);
 /**
  * Perform a SPI data transfer from the GPIO board.
  *
- * arg clk  - the GPIO pin that will act as the SPI clock.
+ * arg sck  - the GPIO pin that will act as the SPI clock.
  * arg mosi - the GPIO pin that will act as the 'master out slave in' pin.
  * arg data - the data that will be transfered to the slave.
- * arg cs   - the GPIO pin that will act as the chip select pin.
+ * arg cs   - the GPIO pin that will act as the chip select pin. (optional)
  * 
  * returns - data received by the GPIO board during the SPI transaction.
  */
-uint8_t spi_send(int clk, int mosi, int miso, uint8_t data, int cs);
+uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs=-1);
 
 #ifdef __cplusplus
 }  // extern "C"
