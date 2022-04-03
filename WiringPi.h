@@ -21,39 +21,55 @@ extern "C" {
 
 /**
  * Start the WiringPi library and connect to the GPIO board.
- * 
- * arg - The name of the com port the GPIO interface is attached to.
- *       See `gpio_open` for details.
+ *
+ * arg port - The name of the com port the GPIO interface is attached to.
+ *            See `gpio_open` for details.
  */
 int wiringPiSetup(const char *port = NULL);
 
 /**
  * Set the digital logic input or output state of a wiring pi pin.
+ *
+ * arg pin   - The WiringPi pin to set the input output state of.
+ * arg state - Either INPUT or OUTPUT to set the pins IO mode.
  */
 void pinMode(int pin, int state);
 
 /**
  * Set the digital logic level of a wiring pi pin.
+ *
+ * arg pin   - The WiringPi pin to set the digital output level of.
+ * arg state - Either HIGH or LOW to set the logic level accordingly.
  */
 void digitalWrite(int pin, int state);
 
 /**
  * Read the digital logic level of a wiring pi pin.
+ *
+ * arg pin - The WiringPi pin to read the digital logic level of.
+ *
+ * returns - Return HIGH or LOW accordingly.
  */
 int digitalRead(int pin);
 
 /**
  * Return the number of milliseconds elapsed since the program started.
+ *
+ * returns - The number of milliseconds since the program started.
  */
-uint64_t millis();
+uint64_t millis(void);
 
 /**
  * Suspend the program for a specified number of milliseconds.
+ *
+ * arg ms - The number of milliseconds to suspend for.
  */
 void delay(uint64_t ms);
 
 /**
  * Suspend the program for a specified number of microseconds.
+ *
+ * arg us - The number of microseconds to suspend for.
  */
 void delayMicroseconds(uint64_t us);
 

@@ -6,19 +6,21 @@ This API is not officially supported and has been developed from my own interest
 
 RTk.GPIO boards are available from [https://pi-supply.com](https://pi-supply.com).
 
-![Tux, the Linux mascot](images/RTkGPIO.jpg)
+![The RTk.GPIO board](images/RTkGPIO.jpg)
 
 
 ----
 ## Available APIs
 
-This library provides two C++ APIs for controlling the RTk.GPIO board:
+This library provides two separate C++ APIs for controlling the RTk.GPIO board:
 - A gpio interface ([gpio.h](gpio.h)).
 - A WiringPi interface ([WiringPi.h](WiringPi.h), [WiringPiSPI.h](WiringPiSPI.h)).
 
-Both are very similar and infact the WiringPi interface is implemented directly on top of the gpio interface.
-The WiringPi interface, provides a subset of the WiringPI API, and was added simply to make it easy to port software between platforms.
+Both are very similar and in fact the WiringPi interface is implemented entirely using the gpio interface.
+The WiringPi interface provides a subset of the WiringPi API and was added simply to make it easy to port software between platforms.
 Not all WiringPi functions are available however due to limitations of the RTk.GPIO board, so it will not work for all applications.
+
+Just pick which one you prefer.
 
 
 ---
