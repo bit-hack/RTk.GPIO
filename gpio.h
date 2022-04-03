@@ -69,6 +69,14 @@ void gpio_write(int pin, bool state);
 bool gpio_read(int pin);
 
 /**
+ * Set the pull up or pull down state of a pin.
+ * 
+ * arg pin   - the pin to set the pull state of.
+ * arg state - set to 0 pull pin low, 1 to pull to up and -1 for no pull.
+ */
+void gpio_pull(int pin, int state);
+
+/**
  * Perform a SPI data transfer from the GPIO board.
  *
  * arg sck  - the GPIO pin that will act as the SPI clock.

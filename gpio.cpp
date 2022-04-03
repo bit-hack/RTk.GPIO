@@ -244,6 +244,16 @@ bool gpio_read(int pin) {
   return (data[1] == '1') ? true : false;
 }
 
+void gpio_pull(int pin, int state) {
+  assert(pin >= 0 && pin <= 27);
+  if (serial) {
+    char data[2] = { 'a' + char(pin), (state == 1) ? 'U' :   // up
+                                      (state == 0) ? 'D' :   // down
+                                                     'N' };  // none
+    serial_send(serial, data, sizeof(data));
+  }
+}
+
 uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs) {
 
   // pull CS low
