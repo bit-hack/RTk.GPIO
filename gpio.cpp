@@ -197,7 +197,7 @@ bool gpio_open(const char *port) {
   return serial != nullptr;
 }
 
-bool gpio_is_open() {
+bool gpio_is_open(void) {
   return serial != NULL;
 }
 
@@ -252,6 +252,41 @@ void gpio_pull(int pin, int state) {
                                                      'N' };  // none
     serial_send(serial, data, sizeof(data));
   }
+}
+
+void gpio_board_version(char* dst, uint32_t dst_size) {
+  assert(dst && dst_size);
+  if (serial) {
+    const char* end = dst + (dst_size - 1);
+    // request the version string
+    // note: we send two bytes but the second is ignored but required by the firmware
+    serial_send(serial, "V_", 2);
+
+    // while we have more space
+    for (; dst < end; ++dst) {
+      char recv = '\0';
+      serial_read(serial, &recv, 1);
+      // exit on new line or carage return
+      if (recv == '\r' || recv == '\n' || recv == '\0') {
+        break;
+      }
+      // append character
+      *dst = recv;
+    }
+  }
+  // append trailing zero
+  *dst = '\0';
+}
+
+void spi_init(int sck, int mosi, int miso, int cs) {
+
+  gpio_output(cs);
+  gpio_write (cs,   1);  // cs high (not asserted)
+  gpio_output(mosi);
+  gpio_write (mosi, 1);
+  gpio_output(sck);
+  gpio_write (sck,  1);
+  gpio_input (miso);
 }
 
 uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs) {

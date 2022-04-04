@@ -77,6 +77,16 @@ bool gpio_read(int pin);
 void gpio_pull(int pin, int state);
 
 /**
+ * Setup pins for use as a SPI interface
+ *
+ * arg sck  - the GPIO pin that will act as the SPI clock.
+ * arg mosi - the GPIO pin that will act as the 'master out slave in' pin.
+ * arg miso - the GPIO pin that will act as the 'master in shave out' pin.
+ * arg cs   - the GPIO pin that will act as the chip select pin.
+ */
+void spi_init(int sck, int mosi, int miso, int cs);
+
+/**
  * Perform a SPI data transfer from the GPIO board.
  *
  * arg sck  - the GPIO pin that will act as the SPI clock.
@@ -88,6 +98,14 @@ void gpio_pull(int pin, int state);
  * returns - data received by the GPIO board during the SPI transaction.
  */
 uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs=-1);
+
+/**
+ * Query the RTk.GPIO board firmware version
+ *
+ * arg dst      - destination buffer for version string.
+ * arg dst_size - size of the destination buffer.
+ */
+void gpio_board_version(char* dst, uint32_t dst_size);
 
 #ifdef __cplusplus
 }  // extern "C"
