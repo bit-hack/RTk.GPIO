@@ -82,9 +82,9 @@ void gpio_pull(int pin, int state);
  * arg sck  - the GPIO pin that will act as the SPI clock.
  * arg mosi - the GPIO pin that will act as the 'master out slave in' pin.
  * arg miso - the GPIO pin that will act as the 'master in shave out' pin.
- * arg cs   - the GPIO pin that will act as the chip select pin.
+ * arg cs   - the GPIO pin that will act as the chip select pin (optional).
  */
-void spi_init(int sck, int mosi, int miso, int cs);
+void spi_init(int sck, int mosi, int miso, int cs=-1);
 
 /**
  * Perform a SPI data transfer from the GPIO board.

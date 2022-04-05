@@ -25,7 +25,14 @@ Not all WiringPi functions are available however due to limitations of the RTk.G
 Just pick which one you prefer.
 
 
----
+----
+## Examples
+
+Some example projects using this interface library and the RTk.GPIO board are
+included and can be browsed [here](examples/README.md).
+
+
+----
 ## RTK.GPIO pin header
 
 The GPIO pinout is as follows:
@@ -60,7 +67,7 @@ Where:
 - `Wn` - WiringPi numbers.
 
 
----
+----
 ## The RTk.GPIO protocol
 
 The RTk.GPIO boards use a very simple ascii based protocol operating at `230400` baud.
@@ -88,7 +95,7 @@ Notes:
 - If an output pin is read from, it will return its current driving logic level.
 
 
----
+----
 ## External References
 
 - [RTk.GPIO board firmware](https://bitbucket.org/ryanteckltd/rtk.gpio-mcu-firmware/src/development/)

@@ -280,8 +280,10 @@ void gpio_board_version(char* dst, uint32_t dst_size) {
 
 void spi_init(int sck, int mosi, int miso, int cs) {
 
-  gpio_output(cs);
-  gpio_write (cs,   1);  // cs high (not asserted)
+  if (cs >= 0 && cs <= 27) {
+    gpio_output(cs);
+    gpio_write(cs, 1);  // cs high (not asserted)
+  }
   gpio_output(mosi);
   gpio_write (mosi, 1);
   gpio_output(sck);
