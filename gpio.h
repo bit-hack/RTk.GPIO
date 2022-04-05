@@ -57,16 +57,16 @@ void gpio_output(int pin);
  * arg pin   - the GPIO pin to set the output level of.
  * arg state - if set to 0 the pin will be voltage level low, otherwise high.
  */
-void gpio_write(int pin, bool state);
+void gpio_write(int pin, int state);
 
 /**
  * Read the digital logic level on an input GPIO pin.
  *
  * arg pin - the GPIO pin to read.
  *
- * returns - true if a digital logic level high was read or false for low.
+ * returns - 1 if a digital logic level high was read or 0 for low.
  */
-bool gpio_read(int pin);
+int gpio_read(int pin);
 
 /**
  * Set the pull up or pull down state of a pin.

@@ -224,7 +224,7 @@ void gpio_output(int pin) {
   }
 }
 
-void gpio_write(int pin, bool state) {
+void gpio_write(int pin, int state) {
   assert(pin >= 0 && pin <= 27);
   if (serial) {
     char data[] = { 'a' + char(pin), state ? '1' : '0' };
@@ -232,7 +232,7 @@ void gpio_write(int pin, bool state) {
   }
 }
 
-bool gpio_read(int pin) {
+int gpio_read(int pin) {
   assert(pin >= 0 && pin <= 27);
   char data[4] = { 'a' + char(pin), '?', '\0', '\0' };
   if (serial) {
@@ -241,7 +241,7 @@ bool gpio_read(int pin) {
     assert(data[2] == '\r');
     assert(data[3] == '\n');
   }
-  return (data[1] == '1') ? true : false;
+  return (data[1] == '1') ? 1 : 0;
 }
 
 void gpio_pull(int pin, int state) {
