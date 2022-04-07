@@ -37,26 +37,26 @@ included and can be browsed [here](examples/README.md).
 
 The GPIO pinout is as follows:
 ```
-pin1                    3v3  ||  5v
-         W8   PB7   ft  GP2  ||  5v
-         W9   PB6   ft  GP3  ||  GND
-         W7   PA8   ft  GP4  ||  GP14  --  PA2   W15
-                        GND  ||  GP15  --  PA3   W16
-         W0   PB15  ft  GP17 ||  GP18  --  PB1   W1
-         W2   PB14  ft  GP27 ||  GND
-         W3   PA11  ft  GP22 ||  GP23  ft  PB2   W4
-                        3v3  ||  GP24  ft  PB3   W5
-         W12  PA7   --  GP10 ||  GND
-         W13  PA6   --  GP9  ||  GP25  ft  PB4   W6
-         W14  PA5   --  GP11 ||  GP8   ft  PB5   W10
-                        GND  ||  GP7   ft  PF1   W11
-         W30  PA1   --  GP0  ||  GP1   ft  PB12  W31
-         W21  PA12  ft  GP5  ||  GND
-  swdio  W22  PA13  ft  GP6  ||  GP12  ft  PF0   W26
-  swclk  W23  PA14  ft  GP13 ||  GND
-         W24  PA15  ft  GP19 ||  GP16  ft  PB8   W27
-         W25  PB0   --  GP26 ||  GP20  ft  PB9   W28
-                        GND  ||  GP21  ft  PB10  W29       pin40
+pin1               3v3  ||  5v        
+         W8    ft  GP2  ||  5v        
+         W9    ft  GP3  ||  GND       
+         W7    ft  GP4  ||  GP14  --   W15
+                   GND  ||  GP15  --   W16
+         W0    ft  GP17 ||  GP18  --   W1
+         W2    ft  GP27 ||  GND
+         W3    ft  GP22 ||  GP23  ft   W4
+                   3v3  ||  GP24  ft   W5
+         W12   --  GP10 ||  GND
+         W13   --  GP9  ||  GP25  ft   W6
+         W14   --  GP11 ||  GP8   ft   W10
+                   GND  ||  GP7   ft   W11
+         W30   --  GP0  ||  GP1   ft   W31
+         W21   ft  GP5  ||  GND
+  swdio  W22   ft  GP6  ||  GP12  ft  W26
+  swclk  W23   ft  GP13 ||  GND
+         W24   ft  GP19 ||  GP16  ft  W27
+         W25   --  GP26 ||  GP20  ft  W28
+                   GND  ||  GP21  ft  W29       pin40
 ```
 
 Where:
@@ -93,6 +93,12 @@ Examples of supported commands are as follows:
 Notes:
 - The `?` command will produce a response from the board in the following format `"x0\r\n"` or `"x1\r\n"` where `"x"` is the pin being read.
 - If an output pin is read from, it will return its current driving logic level.
+
+
+----
+## Firmware
+
+For more information on the updated firmware and flashing the RTk.GPIO board read the [updated firmware guide](firmware/README.md).
 
 
 ----
