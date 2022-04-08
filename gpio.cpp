@@ -189,6 +189,8 @@ static void serial_flush(serial_t* serial) {
 struct state_t {
   bool enhanced_mode;
   uint32_t latched_pin;
+
+  // todo: cache state
 };
 
 static state_t state;
@@ -243,6 +245,11 @@ bool gpio_open(const char *port) {
   if (!serial) {
     return false;
   }
+
+  // clear the input buffer
+  uint8_t send[4] = { ' ', ' ', ' ', ' ' };
+  serial_send(serial, send, 2);
+  serial_read(serial, send, 4);
 
   // try to start enhanced mode
   serial_send(serial, "#", 1);
@@ -368,6 +375,46 @@ uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs) {
     gpio_write(cs, 1);
 
   return recv;
+}
+
+static uint8_t hex_to_nibble(char x) {
+  return (x >= '0' && x <= '9') ? (x - '0') : ((x - 'A') + 10);
+}
+
+static char nibble_to_hex(uint8_t x) {
+  return (x >= 10) ? ('A' + (x - 10)) : ('0' + x);
+}
+
+uint8_t spi_send_hw(uint8_t data, int cs = -1) {
+
+  if (!state.enhanced_mode) {
+    return 0;
+  }
+
+  // pull CS low
+  if (cs >= 0 && cs <= 27)
+    gpio_write(cs, 0);
+
+  // send byte to transmit
+  serial_send(serial, "~", 1);
+  const char out[2] = {
+    nibble_to_hex((data & 0xf0) >> 4),
+    nibble_to_hex((data & 0x0f))
+  };
+  serial_send(serial, out, sizeof(out));
+
+  // send byte to receive
+  char dst[2] = { 0, 0 };
+  serial_read(serial, dst, 2);
+
+  const uint8_t ret = (hex_to_nibble(dst[0]) << 4) |
+                       hex_to_nibble(dst[1]);
+
+  // pull CS high
+  if (cs >= 0 && cs <= 27)
+    gpio_write(cs, 1);
+
+  return ret;
 }
 
 }  // extern "C"

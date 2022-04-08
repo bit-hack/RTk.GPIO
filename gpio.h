@@ -87,7 +87,7 @@ void gpio_pull(int pin, int state);
 void spi_init(int sck, int mosi, int miso, int cs=-1);
 
 /**
- * Perform a SPI data transfer from the GPIO board.
+ * Perform a software SPI data transfer from the GPIO board.
  *
  * arg sck  - the GPIO pin that will act as the SPI clock.
  * arg mosi - the GPIO pin that will act as the 'master out slave in' pin.
@@ -95,9 +95,23 @@ void spi_init(int sck, int mosi, int miso, int cs=-1);
  * arg data - the data that will be transfered to the slave.
  * arg cs   - the GPIO pin that will act as the chip select pin (optional).
  *
- * returns - data received by the GPIO board during the SPI transaction.
+ * returns  - data received by the GPIO board during the SPI transaction.
  */
 uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs=-1);
+
+/**
+ * Perform a hardware SPI data transfer from the GPIO board.
+ *
+ * arg data - the data that will be transfered to the slave.
+ * arg cs   - the GPIO pin that will act as the chip select pin (optional).
+ *
+ * returns  - data received by the GPIO board during the SPI transaction.
+ *
+ * pins     - sck  : gp11
+ *            miso : gp9
+ *            mosi : gp10
+ */
+uint8_t spi_send_hw(uint8_t data, int cs=-1);
 
 /**
  * Query the RTk.GPIO board firmware version

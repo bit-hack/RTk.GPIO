@@ -46,9 +46,9 @@ pin1               3v3  ||  5v
          W2    ft  GP27 ||  GND
          W3    ft  GP22 ||  GP23  ft   W4
                    3v3  ||  GP24  ft   W5
-         W12   --  GP10 ||  GND
-         W13   --  GP9  ||  GP25  ft   W6
-         W14   --  GP11 ||  GP8   ft   W10
+  mosi   W12   --  GP10 ||  GND
+  miso   W13   --  GP9  ||  GP25  ft   W6
+  sck    W14   --  GP11 ||  GP8   ft   W10
                    GND  ||  GP7   ft   W11
          W30   --  GP0  ||  GP1   ft   W31
          W21   ft  GP5  ||  GND
@@ -61,9 +61,9 @@ pin1               3v3  ||  5v
 
 Where:
 - `fv` - 5v tolerant (all others are 3v3 only).
-- `swdio`, `swclk` - debug interface.
-- `Pn` - STM32 pin number.
+- `swdio`, `swclk` - Debug interface.
 - `pin1`, `pin40` - PI interface pin numbers.
+- `miso`, `mosi`, `sck` - Hardware SPI interface.
 - `Wn` - WiringPi numbers.
 
 
