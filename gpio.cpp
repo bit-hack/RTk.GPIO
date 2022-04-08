@@ -183,18 +183,77 @@ static void serial_flush(serial_t* serial) {
 // GPIO
 //-----------------------------------------------------------------------------
 
+#define CHECK_PIN(PIN) \
+  assert(PIN >= 0 && PIN <= 27)
+
+struct state_t {
+  bool enhanced_mode;
+  uint32_t latched_pin;
+};
+
+static state_t state;
 static serial_t* serial;
+
+static void latched_pin_inc() {
+  ++state.latched_pin;
+  if (state.latched_pin >= 27) {
+    state.latched_pin = 0;
+  }
+}
+
+static void gpio_set_pin(int pin) {
+  CHECK_PIN(pin);
+  if (serial) {
+    char data = 'a' + char(pin);
+    // early exit if bin already bound
+    if (state.enhanced_mode) {
+      if (state.latched_pin == pin) {
+        return;
+      }
+    }
+    // explicitly set the pin
+    serial_send(serial, &data, 1);
+    state.latched_pin = pin;
+  }
+}
+
+static void gpio_action(int pin, char action) {
+  CHECK_PIN(pin);
+  if (serial) {
+    // set the pin
+    gpio_set_pin(pin);
+    // perform the action
+    serial_send(serial, &action, 1);
+    latched_pin_inc();
+  }
+}
 
 extern "C" {
 
 bool gpio_open(const char *port) {
+
   if (serial) {
     serial_close(serial);
     serial = NULL;
   }
+
+  // open serial connection
   const int baud = 230400;
   serial = serial_open(port, baud);
-  return serial != nullptr;
+  if (!serial) {
+    return false;
+  }
+
+  // try to start enhanced mode
+  serial_send(serial, "#", 1);
+  uint8_t out[] = { 0, 0 };
+  serial_read(serial, out, 2);
+  if (out[0] != 'E') {
+    state.enhanced_mode = true;
+    state.latched_pin   = 0;
+  }
+
+  return true;
 }
 
 bool gpio_is_open(void) {
@@ -209,49 +268,34 @@ void gpio_close(void) {
 }
 
 void gpio_input(int pin) {
-  assert(pin >= 0 && pin <= 27);
-  if (serial) {
-    char data[] = { 'a' + char(pin), 'I' };
-    serial_send(serial, data, sizeof(data));
-  }
+  CHECK_PIN(pin);
+  gpio_action(pin, 'I');
 }
 
 void gpio_output(int pin) {
-  assert(pin >= 0 && pin <= 27);
-  if (serial) {
-    char data[] = { 'a' + char(pin), 'O' };
-    serial_send(serial, data, sizeof(data));
-  }
+  CHECK_PIN(pin);
+  gpio_action(pin, 'O');
 }
 
 void gpio_write(int pin, int state) {
-  assert(pin >= 0 && pin <= 27);
-  if (serial) {
-    char data[] = { 'a' + char(pin), state ? '1' : '0' };
-    serial_send(serial, data, sizeof(data));
-  }
-}
-
-int gpio_read(int pin) {
-  assert(pin >= 0 && pin <= 27);
-  char data[4] = { 'a' + char(pin), '?', '\0', '\0' };
-  if (serial) {
-    serial_send(serial, data, 2);  // example: a?
-    serial_read(serial, data, 4);  // example: a0\r\n
-    assert(data[2] == '\r');
-    assert(data[3] == '\n');
-  }
-  return (data[1] == '1') ? 1 : 0;
+  CHECK_PIN(pin);
+  gpio_action(pin, state ? '1' : '0');
 }
 
 void gpio_pull(int pin, int state) {
-  assert(pin >= 0 && pin <= 27);
-  if (serial) {
-    char data[2] = { 'a' + char(pin), (state == 1) ? 'U' :   // up
-                                      (state == 0) ? 'D' :   // down
-                                                     'N' };  // none
-    serial_send(serial, data, sizeof(data));
-  }
+  CHECK_PIN(pin);
+  const char action = (state == 1) ? 'U' :
+                      (state == 0) ? 'D' :
+                                     'N';
+  gpio_action(pin, action);
+}
+
+int gpio_read(int pin) {
+  CHECK_PIN(pin);
+  gpio_action(pin, '?');
+  char data[4] = { 0 };
+  serial_read(serial, data, state.enhanced_mode ? 2 : 4);
+  return (data[1] == '1') ? 1 : 0;
 }
 
 void gpio_board_version(char* dst, uint32_t dst_size) {
@@ -260,7 +304,7 @@ void gpio_board_version(char* dst, uint32_t dst_size) {
     const char* end = dst + (dst_size - 1);
     // request the version string
     // note: we send two bytes but the second is ignored but required by the firmware
-    serial_send(serial, "V_", 2);
+    serial_send(serial, "V_", state.enhanced_mode ? 1 : 2);
 
     // while we have more space
     for (; dst < end; ++dst) {
@@ -280,10 +324,15 @@ void gpio_board_version(char* dst, uint32_t dst_size) {
 
 void spi_init(int sck, int mosi, int miso, int cs) {
 
+  CHECK_PIN(sck);
+  CHECK_PIN(mosi);
+  CHECK_PIN(miso);
+
   if (cs >= 0 && cs <= 27) {
     gpio_output(cs);
     gpio_write(cs, 1);  // cs high (not asserted)
   }
+
   gpio_output(mosi);
   gpio_write (mosi, 1);
   gpio_output(sck);
@@ -293,8 +342,13 @@ void spi_init(int sck, int mosi, int miso, int cs) {
 
 uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs) {
 
+  CHECK_PIN(sck);
+  CHECK_PIN(mosi);
+  CHECK_PIN(miso);
+
   // pull CS low
-  if (cs >= 0) gpio_write(cs, 0);
+  if (cs >= 0 && cs <= 27)
+    gpio_write(cs, 0);
 
   uint8_t recv = 0;
   for (int i = 0; i < 8; ++i) {
@@ -310,7 +364,8 @@ uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs) {
   }
 
   // pull CS high
-  if (cs >= 0) gpio_write(cs, 1);
+  if (cs >= 0 && cs <= 27)
+    gpio_write(cs, 1);
 
   return recv;
 }
