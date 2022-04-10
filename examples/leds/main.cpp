@@ -21,10 +21,6 @@ static void write_leds(uint8_t x) {
   }
 }
 
-static void delay(uint64_t ms) {
-  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-}
-
 int main(int argc, char** args) {
 
   // open RTk.GPIO connection
@@ -46,7 +42,7 @@ int main(int argc, char** args) {
   // itterate a number of times
   for (int i = 0; i < 1024 * 1024; ++i) {
     write_leds(i);
-    delay(100);
+    gpio_delay(100);
   }
 
   return 0;

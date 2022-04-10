@@ -3,10 +3,6 @@
 #include <stdio.h>
 #include "gpio.h"
 
-static void delay(uint64_t ms) {
-  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-}
-
 int main(int argc, char** args) {
 
   // open RTk.GPIO connection
@@ -24,9 +20,8 @@ int main(int argc, char** args) {
 
     uint32_t out = rand() & 0xff;
 
-    uint32_t got = spi_send_hw(out);
+    uint32_t got = spi_hw_send(out);
     printf("%u: %u  %c\n", i, got, (out == got) ? ' ' : '!');
-    delay(100);
   }
 
   return 0;

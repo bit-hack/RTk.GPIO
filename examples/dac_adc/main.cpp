@@ -2,12 +2,19 @@
 #include "gpio.h"
 
 enum {
-  PIN_SCK        = 11,
-  PIN_MOSI       = 10,
-  PIN_MISO       = 9,
   PIN_CE_MCP4802 = 7,  // DAC  CE1
   PIN_CE_MCP3202 = 8,  // ADC  CE0
 };
+
+#define USE_HW_SPI 1
+
+static uint8_t spi_send(uint8_t data) {
+#if USE_HW_SPI
+  return spi_hw_send(data);
+#else
+  return spi_sw_send(data);
+#endif
+}
 
 static void mcp4802_write(int channel, bool gain_2x, bool shutdown, uint16_t value) {
 
@@ -18,11 +25,10 @@ static void mcp4802_write(int channel, bool gain_2x, bool shutdown, uint16_t val
     (gain_2x  == false ? 0x00 : 0x20) |
     (shutdown == true  ? 0x00 : 0x10) |
     (value >> 8) &              0x0f;
-  spi_send(PIN_SCK, PIN_MOSI, PIN_MISO, word0);
+  spi_send(word0);
 
-  const uint8_t word1 =
-    value & 0xff;
-  spi_send(PIN_SCK, PIN_MOSI, PIN_MISO, word1);
+  const uint8_t word1 = value & 0xff;
+  spi_send(word1);
 
   gpio_write(PIN_CE_MCP4802, 1);
 }
@@ -35,9 +41,9 @@ static uint16_t mcp3202_read(int channel) {
   const uint8_t word1 = 0x80 | (channel ? 0x40 : 0x00) | 0x20;  // single ended, set channel, msb first
   const uint8_t word2 = 0x00;                                   // dummy byte
 
-  const uint8_t recv0 = spi_send(PIN_SCK, PIN_MOSI, PIN_MISO, word0);
-  const uint8_t recv1 = spi_send(PIN_SCK, PIN_MOSI, PIN_MISO, word1);
-  const uint8_t recv2 = spi_send(PIN_SCK, PIN_MOSI, PIN_MISO, word2);
+  const uint8_t recv0 = spi_send(word0);
+  const uint8_t recv1 = spi_send(word1);
+  const uint8_t recv2 = spi_send(word2);
 
   (void)recv0;
 
@@ -58,14 +64,16 @@ int main(int argc, char** args) {
   printf("version: %s\n", version);
 
   // setup the pins
-  spi_init(PIN_SCK, PIN_MOSI, PIN_MISO, -1);
+  if (!USE_HW_SPI) {
+    spi_sw_init();
+  }
   gpio_output(PIN_CE_MCP3202);
   gpio_write(PIN_CE_MCP3202, 1);
   gpio_output(PIN_CE_MCP4802);
   gpio_write(PIN_CE_MCP4802, 1);
 
   // itterate a number of times
-  for (int i = 0; i < 1024; ++i) {
+  for (int i = 0; i < 1024 * 1024; ++i) {
 
     uint16_t write0 = i & 0xfff;
     mcp4802_write(0, false, false, write0);

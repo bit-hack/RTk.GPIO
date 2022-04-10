@@ -1,3 +1,5 @@
 add_subdirectory(dac_adc)
 add_subdirectory(leds)
 add_subdirectory(spi)
+add_subdirectory(lcd_st7735s)
+add_subdirectory(23lc1024)

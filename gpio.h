@@ -11,6 +11,17 @@
 extern "C" {
 #endif
 
+enum {
+  gpio_low       =  0,
+  gpio_high      =  1,
+  gpio_pull_down =  0,
+  gpio_pull_up   =  1,
+  gpio_pull_none = -1,
+  spi_sck        =  11,
+  spi_mosi       =  10,
+  spi_miso       =  9,
+};
+
 /**
  * Open the serial port the GPIO board is attached to.
  *
@@ -23,7 +34,7 @@ extern "C" {
  *
  * returns - true if the serial port was opened successfully.
 **/
-bool gpio_open(char *port);
+bool gpio_open(const char *port);
 
 /**
  * Close the serial connection to the GPIO board.
@@ -77,27 +88,30 @@ int gpio_read(int pin);
 void gpio_pull(int pin, int state);
 
 /**
- * Setup pins for use as a SPI interface
+ * Setup pins for use as a software SPI interface.
  *
+ * arg cs   - the GPIO pin that will act as the chip select pin (optional).
  * arg sck  - the GPIO pin that will act as the SPI clock.
  * arg mosi - the GPIO pin that will act as the 'master out slave in' pin.
  * arg miso - the GPIO pin that will act as the 'master in shave out' pin.
- * arg cs   - the GPIO pin that will act as the chip select pin (optional).
  */
-void spi_init(int sck, int mosi, int miso, int cs=-1);
+void spi_sw_init(int cs=-1, int sck=spi_sck, int mosi=spi_mosi, int miso=spi_miso);
 
 /**
  * Perform a software SPI data transfer from the GPIO board.
  *
+ * arg data - the data that will be transfered to the slave.
+ * arg cs   - the GPIO pin that will act as the chip select pin (optional).
  * arg sck  - the GPIO pin that will act as the SPI clock.
  * arg mosi - the GPIO pin that will act as the 'master out slave in' pin.
  * arg miso - the GPIO pin that will act as the 'master in shave out' pin.
- * arg data - the data that will be transfered to the slave.
- * arg cs   - the GPIO pin that will act as the chip select pin (optional).
  *
  * returns  - data received by the GPIO board during the SPI transaction.
+ *
+ * note, since software SPI can support any of the GPIO pins, `spi_sw_init`
+ * should be called before this function to setup their state.
  */
-uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs=-1);
+uint8_t spi_sw_send(uint8_t data, int cs=-1, int sck=spi_sck, int mosi=spi_mosi, int miso=spi_miso);
 
 /**
  * Perform a hardware SPI data transfer from the GPIO board.
@@ -111,7 +125,7 @@ uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs=-1);
  *            miso : gp9
  *            mosi : gp10
  */
-uint8_t spi_send_hw(uint8_t data, int cs=-1);
+uint8_t spi_hw_send(uint8_t data, int cs=-1);
 
 /**
  * Query the RTk.GPIO board firmware version
@@ -120,6 +134,13 @@ uint8_t spi_send_hw(uint8_t data, int cs=-1);
  * arg dst_size - size of the destination buffer.
  */
 void gpio_board_version(char* dst, uint32_t dst_size);
+
+/**
+ * Delay for a number of milliseconds.
+ *
+ * arg ms - milliseconds to delay for.
+ */
+void gpio_delay(uint32_t ms);
 
 #ifdef __cplusplus
 }  // extern "C"

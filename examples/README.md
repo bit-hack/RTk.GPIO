@@ -26,3 +26,16 @@ This basic example shows how to use the RTk.GPIO board to drive 8 LEDs.
 For this example a PMOD adapter with 8 LEDs was used, with the LEDs lighting up when their input is driven low.
 
 The code can be browsed [here](leds/main.cpp).
+
+
+----
+## LCD example
+
+![The RTk.GPIO board with SPI LCD](../images/lcd.jpg)
+
+This example shows how the RTk.GPIO board can be used to control an LCD screen using the hardware SPI interface.
+An ST7735S LCD driver chip is used by this particular LCD display, which was purchased from [pimoroni](https://shop.pimoroni.com/products/0-96-spi-colour-lcd-160x80-breakout).
+
+The display in this case has a resolution of 160x80 pixels.
+
+The code can be browsed [here](lcd_st7735s).

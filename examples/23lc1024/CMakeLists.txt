@@ -1,0 +1,2 @@
+add_executable(example_23lc1024 main.cpp)
+target_link_libraries(example_23lc1024 RTkGPIO)

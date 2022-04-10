@@ -1,12 +1,14 @@
-#ifdef __cplusplus
 #include <thread>
 #include <chrono>
-#endif
+#include <cstdint>
+#include <cassert>
+#include <cstdlib>
+#include <cstdio>
 
-#include <stdint.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include "gpio.h"
+
+#define gpio_debug    0
+#define gpio_no_cache 0
 
 //-----------------------------------------------------------------------------
 // WINDOWS SERIAL
@@ -24,12 +26,20 @@ struct serial_t {
 static BOOL set_timeouts(HANDLE handle) {
   COMMTIMEOUTS com_timeout;
   ZeroMemory(&com_timeout, sizeof(com_timeout));
-  com_timeout.ReadIntervalTimeout = 3;
-  com_timeout.ReadTotalTimeoutMultiplier = 3;
-  com_timeout.ReadTotalTimeoutConstant = 2;
-  com_timeout.WriteTotalTimeoutMultiplier = 3;
-  com_timeout.WriteTotalTimeoutConstant = 2;
+  com_timeout.ReadIntervalTimeout = 200;
+  com_timeout.ReadTotalTimeoutMultiplier = 10;
+  com_timeout.ReadTotalTimeoutConstant = 100;
+  com_timeout.WriteTotalTimeoutMultiplier = 200;
+  com_timeout.WriteTotalTimeoutConstant = 10;
   return SetCommTimeouts(handle, &com_timeout);
+}
+
+static void get_com_error(HANDLE handle) {
+  DWORD errors = 0;
+  COMSTAT stat = { 0 };
+  if (ClearCommError(handle, &errors, &stat)) {
+    // read error
+  }
 }
 
 static bool get_port_name(const char* port, char* out, size_t size) {
@@ -135,16 +145,32 @@ static void serial_close(serial_t* serial) {
   free(serial);
 }
 
-static uint32_t serial_send(serial_t* serial, const void* data, size_t nbytes) {
-  assert(serial && data && nbytes);
+static uint32_t serial_send(serial_t* serial, const void* src, size_t nbytes) {
+  assert(serial && src && nbytes);
   DWORD nb_written = 0;
   if (WriteFile(
     serial->handle,
-    data,
+    src,
     (DWORD)nbytes,
     &nb_written,
     NULL) == FALSE) {
     return 0;
+  }
+
+  FlushFileBuffers(serial->handle);
+
+  if (gpio_debug) {
+    printf("sent %zu, done %lu ", nbytes, nb_written);
+    for (size_t i = 0; i < nb_written; ++i) {
+      char d = ((uint8_t*)src)[i];
+      printf("%02x(%c) ", d, d);
+    }
+    printf("\n");
+  }
+
+  if (nb_written != nbytes) {
+    // DebugBreak();
+    get_com_error(serial->handle);
   }
   return nb_written;
 }
@@ -159,6 +185,20 @@ static uint32_t serial_read(serial_t* serial, void* dst, size_t nbytes) {
     &nb_read,
     NULL) == FALSE) {
     return 0;
+  }
+
+  if (gpio_debug) {
+    printf("read %zu, got %u ", nbytes, nb_read);
+    for (size_t i = 0; i < nb_read; ++i) {
+      char d = ((uint8_t*)dst)[i];
+      printf("%02x(%c) ", d, d);
+    }
+    printf("\n");
+  }
+
+  if (nb_read != nbytes) {
+    // DebugBreak();
+    get_com_error(serial->handle);
   }
   return nb_read;
 }
@@ -183,22 +223,50 @@ static void serial_flush(serial_t* serial) {
 // GPIO
 //-----------------------------------------------------------------------------
 
+#define PIN_COUNT 28
+
 #define CHECK_PIN(PIN) \
-  assert(PIN >= 0 && PIN <= 27)
+  assert(PIN >= 0 && PIN <= PIN_COUNT)
 
-struct state_t {
-  bool enhanced_mode;
-  uint32_t latched_pin;
-
-  // todo: cache state
+enum pin_type_t {
+  type_unknown,
+  type_input,
+  type_output,
+  type_spi
 };
 
-static state_t state;
-static serial_t* serial;
+enum pin_pull_t {
+  pull_unknown,
+  pull_up,
+  pull_down,
+  pull_none,
+};
 
+enum pin_drive_t {
+  drive_unknown,
+  drive_low,
+  drive_high,
+};
+
+struct pin_state_t {
+  pin_type_t  type;
+  pin_pull_t  pull;
+  pin_drive_t drive;
+};
+
+struct state_t {
+  bool        enhanced_mode;
+  uint32_t    latched_pin;
+  pin_state_t pin[PIN_COUNT];
+};
+
+static state_t   state;
+static serial_t *serial;
+
+// increment the latched pin with wrapping
 static void latched_pin_inc() {
   ++state.latched_pin;
-  if (state.latched_pin >= 27) {
+  if (state.latched_pin >= PIN_COUNT) {
     state.latched_pin = 0;
   }
 }
@@ -208,7 +276,7 @@ static void gpio_set_pin(int pin) {
   if (serial) {
     char data = 'a' + char(pin);
     // early exit if bin already bound
-    if (state.enhanced_mode) {
+    if (state.enhanced_mode && !gpio_no_cache) {
       if (state.latched_pin == pin) {
         return;
       }
@@ -230,7 +298,25 @@ static void gpio_action(int pin, char action) {
   }
 }
 
+static uint8_t hex_to_nibble(char x) {
+  return (x >= '0' && x <= '9') ? (x - '0') : ((x - 'A') + 10);
+}
+
+static char nibble_to_hex(uint8_t x) {
+  return (x >= 10) ? ('A' + (x - 10)) : ('0' + x);
+}
+
+static void pin_dispose(int pin) {
+  state.pin[pin].drive = drive_unknown;
+  state.pin[pin].pull  = pull_unknown;
+  state.pin[pin].type  = type_spi;
+}
+
 extern "C" {
+
+void gpio_delay(uint32_t ms) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
 
 bool gpio_open(const char *port) {
 
@@ -246,18 +332,21 @@ bool gpio_open(const char *port) {
     return false;
   }
 
-  // clear the input buffer
-  uint8_t send[4] = { ' ', ' ', ' ', ' ' };
-  serial_send(serial, send, 2);
-  serial_read(serial, send, 4);
+  // soft reset the RTk.GPIO board
+  serial_send(serial, "R", 1);
+  char recv[2] = { '\0', '\0' };
+  if (serial_read(serial, recv, sizeof(recv))) {
+    if (recv[0] == 'O' && recv[1] == 'K') {
+      state.enhanced_mode = true;
+    }
+  }
 
-  // try to start enhanced mode
-  serial_send(serial, "#", 1);
-  uint8_t out[] = { 0, 0 };
-  serial_read(serial, out, 2);
-  if (out[0] != 'E') {
-    state.enhanced_mode = true;
-    state.latched_pin   = 0;
+  // default to initially unknown state
+  for (int i = 0; i < PIN_COUNT; ++i) {
+    auto &pin = state.pin[i];
+    pin.drive = drive_unknown;
+    pin.type  = type_unknown;
+    pin.pull  = pull_unknown;
   }
 
   return true;
@@ -276,25 +365,49 @@ void gpio_close(void) {
 
 void gpio_input(int pin) {
   CHECK_PIN(pin);
-  gpio_action(pin, 'I');
+
+  auto &type = state.pin[pin].type;
+  if (type != type_input || gpio_no_cache) {
+    gpio_action(pin, 'I');
+    type = type_input;
+  }
 }
 
 void gpio_output(int pin) {
   CHECK_PIN(pin);
-  gpio_action(pin, 'O');
+
+  auto &type = state.pin[pin].type;
+  if (type != type_output || gpio_no_cache) {
+    gpio_action(pin, 'O');
+    type = type_output;
+  }
 }
 
-void gpio_write(int pin, int state) {
+void gpio_write(int pin, int d) {
   CHECK_PIN(pin);
-  gpio_action(pin, state ? '1' : '0');
+
+  pin_drive_t target = d ? drive_high : drive_low;
+  auto &drive = state.pin[pin].drive;
+  if (drive != target || gpio_no_cache) {
+    gpio_action(pin, d ? '1' : '0');
+    drive = target;
+  }
 }
 
-void gpio_pull(int pin, int state) {
+void gpio_pull(int pin, int p) {
   CHECK_PIN(pin);
-  const char action = (state == 1) ? 'U' :
-                      (state == 0) ? 'D' :
-                                     'N';
-  gpio_action(pin, action);
+
+  pin_pull_t target = (p == gpio_pull_up)   ? pull_up   :
+                      (p == gpio_pull_down) ? pull_down :
+                                              pull_none;
+  const char action = (p == 1) ? 'U' :
+                      (p == 0) ? 'D' :
+                                 'N';
+  auto &pull = state.pin[pin].pull;
+  if (pull != target || gpio_no_cache) {
+    gpio_action(pin, action);
+    pull = target;
+  }
 }
 
 int gpio_read(int pin) {
@@ -329,13 +442,13 @@ void gpio_board_version(char* dst, uint32_t dst_size) {
   *dst = '\0';
 }
 
-void spi_init(int sck, int mosi, int miso, int cs) {
+void spi_sw_init(int cs, int sck, int mosi, int miso) {
 
   CHECK_PIN(sck);
   CHECK_PIN(mosi);
   CHECK_PIN(miso);
 
-  if (cs >= 0 && cs <= 27) {
+  if (cs >= 0 && cs <= PIN_COUNT) {
     gpio_output(cs);
     gpio_write(cs, 1);  // cs high (not asserted)
   }
@@ -347,14 +460,14 @@ void spi_init(int sck, int mosi, int miso, int cs) {
   gpio_input (miso);
 }
 
-uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs) {
+uint8_t spi_sw_send(uint8_t data, int cs, int sck, int mosi, int miso) {
 
   CHECK_PIN(sck);
   CHECK_PIN(mosi);
   CHECK_PIN(miso);
 
   // pull CS low
-  if (cs >= 0 && cs <= 27)
+  if (cs >= 0 && cs <= PIN_COUNT)
     gpio_write(cs, 0);
 
   uint8_t recv = 0;
@@ -371,28 +484,26 @@ uint8_t spi_send(int sck, int mosi, int miso, uint8_t data, int cs) {
   }
 
   // pull CS high
-  if (cs >= 0 && cs <= 27)
+  if (cs >= 0 && cs <= PIN_COUNT)
     gpio_write(cs, 1);
 
   return recv;
 }
 
-static uint8_t hex_to_nibble(char x) {
-  return (x >= '0' && x <= '9') ? (x - '0') : ((x - 'A') + 10);
-}
-
-static char nibble_to_hex(uint8_t x) {
-  return (x >= 10) ? ('A' + (x - 10)) : ('0' + x);
-}
-
-uint8_t spi_send_hw(uint8_t data, int cs = -1) {
+uint8_t spi_hw_send(uint8_t data, int cs) {
 
   if (!state.enhanced_mode) {
-    return 0;
+    spi_sw_init();
+    return spi_sw_send(data, cs);
   }
 
+  // invalidate HW spi pins
+  pin_dispose(9);
+  pin_dispose(10);
+  pin_dispose(11);
+
   // pull CS low
-  if (cs >= 0 && cs <= 27)
+  if (cs >= 0 && cs <= PIN_COUNT)
     gpio_write(cs, 0);
 
   // send byte to transmit
@@ -411,7 +522,7 @@ uint8_t spi_send_hw(uint8_t data, int cs = -1) {
                        hex_to_nibble(dst[1]);
 
   // pull CS high
-  if (cs >= 0 && cs <= 27)
+  if (cs >= 0 && cs <= PIN_COUNT)
     gpio_write(cs, 1);
 
   return ret;
